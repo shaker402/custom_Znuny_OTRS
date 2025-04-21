@@ -1,0 +1,81 @@
+---
+Debugger:
+  DebugThreshold: info
+  TestMode: '0'
+Description: Link Connector REST Sample
+FrameworkVersion: 5.0.13
+Provider:
+  Operation:
+    LinkAdd:
+      Description: Add a new link between two elements.
+      MappingInbound: {}
+      MappingOutbound: {}
+      Type: Link::LinkAdd
+    LinkDelete:
+      Description: Deletes a link between two elements.
+      MappingInbound: {}
+      MappingOutbound: {}
+      Type: Link::LinkDelete
+    LinkDeleteAll:
+      Description: Deletes all links of an element.
+      MappingInbound: {}
+      MappingOutbound: {}
+      Type: Link::LinkDeleteAll
+    LinkList:
+      Description: Get all existing links for an element.
+      MappingInbound: {}
+      MappingOutbound: {}
+      Type: Link::LinkList
+    PossibleLinkList:
+      Description: Get a list structure of all possible link types.
+      MappingInbound: {}
+      MappingOutbound: {}
+      Type: Link::PossibleLinkList
+    PossibleObjectsList:
+      Description: Get a list of all possible linkable objects for an object.
+      MappingInbound: {}
+      MappingOutbound: {}
+      Type: Link::PossibleObjectsList
+    PossibleTypesList:
+      Description: Get a list of all possible link types between two objects.
+      MappingInbound: {}
+      MappingOutbound: {}
+      Type: Link::PossibleTypesList
+  Transport:
+    Config:
+      KeepAlive: ''
+      MaxLength: '100000000'
+      RouteOperationMapping:
+        LinkAdd:
+          RequestMethod:
+          - POST
+          Route: /LinkAdd
+        LinkDelete:
+          RequestMethod:
+          - DELETE
+          Route: /LinkDelete
+        LinkDeleteAll:
+          RequestMethod:
+          - DELETE
+          Route: /LinkDeleteAll
+        LinkList:
+          RequestMethod:
+          - GET
+          Route: /LinkList
+        PossibleLinkList:
+          RequestMethod:
+          - GET
+          Route: /PossibleLinkList
+        PossibleObjectsList:
+          RequestMethod:
+          - GET
+          Route: /PossibleObjectsList
+        PossibleTypesList:
+          RequestMethod:
+          - GET
+          Route: /PossibleTypesList
+    Type: HTTP::REST
+RemoteSystem: ''
+Requester:
+  Transport:
+    Type: ''
