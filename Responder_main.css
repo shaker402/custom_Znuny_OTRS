@@ -1,0 +1,310 @@
+/* Container */
+.responder-container {
+  padding: 20px;
+}
+
+/* Responsive Grid Sections */
+.responder-sections {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-gap: 20px;
+  align-items: stretch;
+}
+
+@media (min-width: 768px) {
+  .responder-sections {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+
+/* Card‑style Panels */
+.section {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Global Actions */
+.global-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.global-actions input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.global-actions button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #007bff;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.global-actions button:hover {
+  background: #0056b3;
+}
+
+/* Global Actions Dropdown */
+.global-menu-container {
+  position: relative;
+}
+
+.global-menu-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #6c757d;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.global-menu-button:hover {
+  background: #5a6268;
+}
+
+/* Client Table Section */
+.client-table {
+  flex: 1;
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+/* Modern Table Design */
+.client-table table {
+  width: 100%;
+  border-spacing: 0;
+}
+
+.client-table th,
+.client-table td {
+  padding: 12px;
+  text-align: left;
+}
+
+.client-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f4f4f4;
+  font-weight: 600;
+  border-bottom: 2px solid #ddd;
+}
+
+.client-table tr {
+  transition: background 0.2s;
+}
+
+.client-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.client-table tr:hover {
+  background: #f1f1f1;
+}
+
+/* Online/Offline States */
+.online {
+  color: green;
+  font-weight: bold;
+}
+
+.offline {
+  color: red;
+  font-weight: bold;
+}
+
+/* Table Action Button */
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+}
+
+/* Context Menus */
+.action-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 1000;
+}
+
+.action-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.action-menu button:hover {
+  background: #f0f0f0;
+}
+
+/* Input State Display */
+.input-state {
+  margin-top: 12px;
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+/* Ensure the Global Actions menu floats above everything */
+.global-menu-container .action-menu {
+  z-index: 9999;    /* higher than any other component */
+}
+
+/* Force the menu text to black */
+.global-menu-container .action-menu button {
+  color: #000;      /* black font */
+}
+.inline-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .inline-form input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .inline-form button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    background: #007bff;
+    color: #fff;
+    cursor: pointer;
+  }
+  
+  .inline-form button:hover {
+    background: #0056b3;
+  }
+  
+  /* Confirmation Dialog */
+  .confirmation-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+  }
+  
+  .confirmation-dialog p {
+    margin-bottom: 16px;
+  }
+  
+  .confirmation-dialog button {
+    margin-right: 8px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .confirmation-dialog button:first-child {
+    background: #28a745;
+    color: #fff;
+  }
+  
+  .confirmation-dialog button:first-child:hover {
+    background: #218838;
+  }
+  
+  .confirmation-dialog button:last-child {
+    background: #dc3545;
+    color: #fff;
+  }
+  
+  .confirmation-dialog button:last-child:hover {
+    background: #c82333;
+  }
+
+  .state-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000; /* Ensure the popup is above other elements */
+  }
+  
+  .state-popup-content {
+    position: relative;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+  }
+  
+  .state-popup-content h3 {
+    margin-top: 0;
+  }
+  
+  .state-popup-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  
+  .state-popup-content table th,
+  .state-popup-content table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  .state-popup-content table th {
+    background: #f4f4f4;
+    font-weight: bold;
+  }
+  
+  .close-popup {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .confirmation-dialog p {
+    color: black; /* Set the font color to black */
+  }
