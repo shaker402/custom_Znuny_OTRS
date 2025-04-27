@@ -2,6 +2,7 @@ const { v4: uuid } = require("uuid");
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
+// Database pool
 const pool = mysql.createPool({
     host: process.env.DB_HOST || "127.0.0.1",
     user: process.env.DB_USER || "root",
@@ -11,6 +12,11 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0
 });
+
+// Helper to format MySQL datetime
+function mysqlDateTime(date = new Date()) {
+    return date.toISOString().slice(0, 19).replace("T", " ");
+}
 
 // Validate user credentials
 function validateCredentials(user, password) {
@@ -193,11 +199,6 @@ async function addContextToTicket(ticketNumber, contextData) {
     } finally {
         connection.release();
     }
-}
-
-// Format date to MySQL-compatible datetime
-function mysqlDateTime(date = new Date()) {
-    return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
 module.exports = {
