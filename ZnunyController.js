@@ -2,12 +2,11 @@ const {
     generateTicket,
     addArticleToTicket,
     getTicketDetails,
-    getOpenTickets,
     validateCredentials,
     addContextToTicket,
     createSessionInDB,
     isValidSessionInDB,
-    searchTicketsInDB // Correctly implemented in the model
+    searchTicketsInDB
 } = require("../models/ZnunyModel");
 
 // Create a new session
@@ -59,7 +58,7 @@ async function createTicket(req, res) {
             Type,
             State,
             CustomerUser,
-            DynamicFields: Ticket.DynamicFields || {} // Handle dynamic fields
+            DynamicFields: Ticket.DynamicFields || {}
         });
 
         const article = {
