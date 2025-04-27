@@ -12,18 +12,17 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// Environment variables for authentication
-const VALID_USER = process.env.VALID_USER || "zsoar";
-const VALID_PASSWORD = process.env.VALID_PASSWORD || "the1Esmarta";
-
 // Validate user credentials
 function validateCredentials(user, password) {
+    const VALID_USER = process.env.VALID_USER || "zsoar";
+    const VALID_PASSWORD = process.env.VALID_PASSWORD || "the1Esmarta";
+
     if (user !== VALID_USER || password !== VALID_PASSWORD) {
         throw new Error("Invalid credentials");
     }
 }
 
-// Session management
+// Create a session in the database
 async function createSessionInDB(sessionID, user) {
     const connection = await pool.getConnection();
     try {
@@ -36,6 +35,7 @@ async function createSessionInDB(sessionID, user) {
     }
 }
 
+// Check if a session is valid
 async function isValidSessionInDB(sessionKey) {
     const connection = await pool.getConnection();
     try {
@@ -56,7 +56,6 @@ async function generateTicket(ticketData) {
         const ticketID = uuid();
         const ticketNumber = `MOCK-${Date.now()}`;
         const created = mysqlDateTime();
-        const updated = mysqlDateTime();
 
         await connection.query(
             `INSERT INTO tickets (TicketNumber, TicketID, Title, Queue, Priority, Type, State, CustomerUser, Created, Updated, DynamicFields, Notes)
@@ -71,7 +70,7 @@ async function generateTicket(ticketData) {
                 ticketData.State,
                 ticketData.CustomerUser,
                 created,
-                updated,
+                created,
                 JSON.stringify(ticketData.DynamicFields || {}),
                 JSON.stringify([])
             ]
@@ -124,7 +123,6 @@ async function getTicketDetails(ticketNumber) {
         }
 
         const ticket = ticketRows[0];
-
         const [articleRows] = await connection.query(
             `SELECT * FROM articles WHERE TicketNumber = ?`,
             [ticketNumber]
@@ -150,7 +148,53 @@ async function getTicketDetails(ticketNumber) {
     }
 }
 
-// Other utility functions (unchanged)
+// Search tickets in the database
+async function searchTicketsInDB(filters) {
+    const connection = await pool.getConnection();
+    try {
+        let query = `SELECT * FROM tickets WHERE 1=1`;
+        const params = [];
+
+        if (filters.TicketNumber) {
+            query += ` AND TicketNumber = ?`;
+            params.push(filters.TicketNumber);
+        }
+
+        const [rows] = await connection.query(query, params);
+        return rows;
+    } finally {
+        connection.release();
+    }
+}
+
+// Add context to a ticket
+async function addContextToTicket(ticketNumber, contextData) {
+    const connection = await pool.getConnection();
+    try {
+        const [rows] = await connection.query(
+            `SELECT DynamicFields FROM tickets WHERE TicketNumber = ?`,
+            [ticketNumber]
+        );
+
+        if (rows.length === 0) {
+            throw new Error(`Ticket with TicketNumber ${ticketNumber} does not exist.`);
+        }
+
+        const dynamicFields = JSON.parse(rows[0].DynamicFields || "{}");
+        const updatedFields = { ...dynamicFields, ...contextData };
+
+        await connection.query(
+            `UPDATE tickets SET DynamicFields = ?, Updated = ? WHERE TicketNumber = ?`,
+            [JSON.stringify(updatedFields), mysqlDateTime(), ticketNumber]
+        );
+
+        return updatedFields;
+    } finally {
+        connection.release();
+    }
+}
+
+// Format date to MySQL-compatible datetime
 function mysqlDateTime(date = new Date()) {
     return date.toISOString().slice(0, 19).replace("T", " ");
 }
@@ -161,5 +205,7 @@ module.exports = {
     isValidSessionInDB,
     generateTicket,
     addArticleToTicket,
-    getTicketDetails
+    getTicketDetails,
+    searchTicketsInDB, // Ensure this function is properly exported
+    addContextToTicket
 };
