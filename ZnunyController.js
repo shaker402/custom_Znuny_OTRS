@@ -2,6 +2,7 @@ const {
     generateTicket,
     addArticleToTicket,
     getTicketDetails,
+    getOpenTickets,
     validateCredentials,
     addContextToTicket,
     createMockSession,
@@ -63,7 +64,7 @@ async function createTicket(req, res) {
         });
 
         const article = {
-            ArticleID: "9",
+            ArticleID: "9", // Example ArticleID
             Subject: Article?.Subject || "Default Subject",
             Body: Article?.Body || "Default Body",
             MimeType: Article?.MimeType || "text/plain"
@@ -118,7 +119,9 @@ async function getTicket(req, res) {
             throw new Error("Invalid or missing session key");
         }
 
-        const ticket = mockTickets.get(ticketNumber);
+        const ticket = Array.from(mockTickets.values()).find(
+            t => t.TicketID === ticketNumber || t.TicketNumber === ticketNumber
+        );
 
         if (!ticket) {
             return res.status(404).json({ error: "Ticket not found" });
