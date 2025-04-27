@@ -7,7 +7,7 @@ const {
     addContextToTicket,
     createSessionInDB,
     isValidSessionInDB,
-    searchTicketsInDB
+    searchTicketsInDB // Correctly implemented in the model
 } = require("../models/ZnunyModel");
 
 // Create a new session
