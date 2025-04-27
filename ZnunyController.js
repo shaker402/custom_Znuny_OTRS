@@ -64,7 +64,7 @@ async function createTicket(req, res) {
         });
 
         const article = {
-            ArticleID: "9", // Example ArticleID
+            ArticleID: 9, // Example ArticleID as an integer
             Subject: Article?.Subject || "Default Subject",
             Body: Article?.Body || "Default Body",
             MimeType: Article?.MimeType || "text/plain"
@@ -119,9 +119,7 @@ async function getTicket(req, res) {
             throw new Error("Invalid or missing session key");
         }
 
-        const ticket = Array.from(mockTickets.values()).find(
-            t => t.TicketID === ticketNumber || t.TicketNumber === ticketNumber
-        );
+        const ticket = mockTickets.get(parseInt(ticketNumber, 10)); // Ensure ticketNumber is treated as an integer
 
         if (!ticket) {
             return res.status(404).json({ error: "Ticket not found" });
