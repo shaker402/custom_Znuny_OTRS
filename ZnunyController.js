@@ -4,9 +4,10 @@ const {
     getTicketDetails,
     validateCredentials,
     addContextToTicket,
-    createSessionInDB,
-    isValidSessionInDB,
-    searchTicketsInDB
+    createMockSession,
+    isValidSession,
+    mockTickets,
+    mockArticles
 } = require("../models/ZnunyModel");
 
 // Create a new session
@@ -27,7 +28,7 @@ async function createSession(req, res) {
             User
         };
 
-        await createSessionInDB(session.SessionID, User);
+        createMockSession(session.SessionID);
 
         res.status(200).json(session);
     } catch (error) {
@@ -51,7 +52,7 @@ async function createTicket(req, res) {
             throw new Error("Missing required fields for ticket creation");
         }
 
-        const ticket = await generateTicket({
+        const ticket = generateTicket({
             Title,
             Queue,
             Priority,
@@ -87,7 +88,7 @@ async function addArticle(req, res) {
 
         validateCredentials(User, Password);
 
-        const article = await addArticleToTicket(ticketNumber, {
+        const article = addArticleToTicket(ticketNumber, {
             Subject: Article.Subject,
             Body: Article.Body,
             MimeType: Article.MimeType || "text/plain"
@@ -113,17 +114,37 @@ async function getTicket(req, res) {
         const { ticketNumber } = req.params;
         const sessionKey = req.headers.sessionid || req.body.SessionID || req.query.SessionID;
 
-        if (!sessionKey || !(await isValidSessionInDB(sessionKey))) {
+        if (!sessionKey || !isValidSession(sessionKey)) {
             throw new Error("Invalid or missing session key");
         }
 
-        const ticket = await getTicketDetails(ticketNumber);
+        const ticket = mockTickets.get(ticketNumber);
 
         if (!ticket) {
             return res.status(404).json({ error: "Ticket not found" });
         }
 
-        res.status(200).json({ Ticket: [ticket] });
+        const articles = mockArticles.get(ticket.TicketNumber) || [];
+
+        const ticketResponse = [
+            {
+                TicketID: ticket.TicketID,
+                Title: ticket.Title,
+                Queue: ticket.Queue,
+                Priority: ticket.Priority,
+                State: ticket.State,
+                CustomerUser: ticket.CustomerUser,
+                DynamicFields: ticket.DynamicFields || [],
+                Articles: articles.map(article => ({
+                    ArticleID: article.ArticleID,
+                    Subject: article.Subject,
+                    Body: article.Body,
+                    Created: article.Created
+                }))
+            }
+        ];
+
+        res.status(200).json({ Ticket: ticketResponse });
     } catch (error) {
         console.error("Error in getTicket:", error.message);
         res.status(400).json({ error: "Ticket retrieval failed", details: error.message });
@@ -135,12 +156,17 @@ async function ticketSearch(req, res) {
     try {
         const sessionKey = req.headers.sessionid || req.body.SessionID || req.query.SessionID;
 
-        if (!sessionKey || !(await isValidSessionInDB(sessionKey))) {
+        if (!sessionKey || !isValidSession(sessionKey)) {
             throw new Error("Invalid or missing session key");
         }
 
         const { TicketNumber } = req.query;
-        const tickets = await searchTicketsInDB({ TicketNumber });
+
+        let tickets = Array.from(mockTickets.values());
+
+        if (TicketNumber) {
+            tickets = tickets.filter(ticket => ticket.TicketNumber === TicketNumber);
+        }
 
         const ticketIDs = tickets.map(ticket => ticket.TicketID);
         res.status(200).json({ TicketID: ticketIDs });
@@ -158,7 +184,7 @@ async function addDetectionContext(req, res) {
 
         validateCredentials(User, Password);
 
-        const updatedTicket = await addContextToTicket(ticketNumber, Context);
+        const updatedTicket = addContextToTicket(ticketNumber, Context);
 
         res.status(201).json({ Ticket: updatedTicket });
     } catch (error) {
