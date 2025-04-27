@@ -123,6 +123,7 @@ async function getTicketDetails(ticketNumber) {
         }
 
         const ticket = ticketRows[0];
+
         const [articleRows] = await connection.query(
             `SELECT * FROM articles WHERE TicketNumber = ?`,
             [ticketNumber]
@@ -206,6 +207,6 @@ module.exports = {
     generateTicket,
     addArticleToTicket,
     getTicketDetails,
-    searchTicketsInDB, // Ensure this function is properly exported
+    searchTicketsInDB,
     addContextToTicket
 };
