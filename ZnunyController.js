@@ -1,15 +1,24 @@
-const { 
-    generateTicket, 
-    addArticleToTicket, 
-    getTicketDetails, 
-    getOpenTickets: fetchOpenTickets,
-    validateCredentials
+const {
+    generateTicket,
+    addArticleToTicket,
+    getTicketDetails,
+    getOpenTickets,
+    validateCredentials,
+    addContextToTicket,
+    createSessionInDB,
+    isValidSessionInDB,
+    searchTicketsInDB
 } = require("../models/ZnunyModel");
 
 // Create a new session
 async function createSession(req, res) {
     try {
-        const { User, Password } = req.body;
+        const User = req.body.User || req.body.UserLogin;
+        const { Password } = req.body;
+
+        if (!User || !Password) {
+            throw new Error("Missing required fields: User or Password");
+        }
 
         validateCredentials(User, Password);
 
@@ -19,7 +28,9 @@ async function createSession(req, res) {
             User
         };
 
-        res.json(session);
+        await createSessionInDB(session.SessionID, User);
+
+        res.status(200).json(session);
     } catch (error) {
         console.error("Error in createSession:", error.message);
         res.status(401).json({ error: "Session creation failed", details: error.message });
@@ -29,95 +40,139 @@ async function createSession(req, res) {
 // Create a new ticket
 async function createTicket(req, res) {
     try {
-        const { User, Password, Ticket, Context } = req.body;
+        const { Ticket, Article, SessionID } = req.body;
 
-        validateCredentials(User, Password);
+        if (!Ticket) {
+            throw new Error("Missing Ticket object in payload");
+        }
 
-        const ticket = generateTicket(User, Password, { Ticket, Context });
-        res.status(201).json(ticket);
+        const { Title, Queue, Priority, Type, State, CustomerUser } = Ticket;
+
+        if (!Title || !Queue || !Priority || !Type || !State || !CustomerUser) {
+            throw new Error("Missing required fields for ticket creation");
+        }
+
+        const ticket = await generateTicket({
+            Title,
+            Queue,
+            Priority,
+            Type,
+            State,
+            CustomerUser,
+            DynamicFields: Ticket.DynamicFields || {} // Handle dynamic fields
+        });
+
+        const article = {
+            ArticleID: "9",
+            Subject: Article?.Subject || "Default Subject",
+            Body: Article?.Body || "Default Body",
+            MimeType: Article?.MimeType || "text/plain"
+        };
+
+        res.status(201).json({
+            TicketID: ticket.TicketID,
+            TicketNumber: ticket.TicketNumber,
+            ArticleID: article.ArticleID
+        });
     } catch (error) {
         console.error("Error in createTicket:", error.message);
-        res.status(401).json({ error: "Ticket creation failed", details: error.message });
+        res.status(400).json({ error: "Ticket creation failed", details: error.message });
     }
 }
 
-// Add an article/update to an existing ticket
+// Add an article to an existing ticket
 async function addArticle(req, res) {
     try {
         const { User, Password, Article } = req.body;
+        const { ticketNumber } = req.params;
 
         validateCredentials(User, Password);
 
-        const article = addArticleToTicket(User, Password, req.params.ticketNumber, { Article });
-        res.status(201).json(article);
+        const article = await addArticleToTicket(ticketNumber, {
+            Subject: Article.Subject,
+            Body: Article.Body,
+            MimeType: Article.MimeType || "text/plain"
+        });
+
+        res.status(201).json({
+            Article: {
+                ArticleID: article.ArticleID,
+                Subject: article.Subject,
+                Body: article.Body,
+                Created: article.Created
+            }
+        });
     } catch (error) {
         console.error("Error in addArticle:", error.message);
-        res.status(401).json({ error: "Article addition failed", details: error.message });
+        res.status(400).json({ error: "Article creation failed", details: error.message });
     }
 }
 
-// Retrieve a ticket's details (including articles)
+// Retrieve a ticket's details
 async function getTicket(req, res) {
     try {
-        const { User, Password } = req.body;
+        const { ticketNumber } = req.params;
+        const sessionKey = req.headers.sessionid || req.body.SessionID || req.query.SessionID;
 
-        validateCredentials(User, Password);
+        if (!sessionKey || !(await isValidSessionInDB(sessionKey))) {
+            throw new Error("Invalid or missing session key");
+        }
 
-        const ticket = getTicketDetails(User, Password, req.params.ticketNumber);
+        const ticket = await getTicketDetails(ticketNumber);
+
         if (!ticket) {
             return res.status(404).json({ error: "Ticket not found" });
         }
 
-        res.json(ticket);
+        res.status(200).json({ Ticket: [ticket] });
     } catch (error) {
         console.error("Error in getTicket:", error.message);
-        res.status(401).json({ error: "Ticket retrieval failed", details: error.message });
+        res.status(400).json({ error: "Ticket retrieval failed", details: error.message });
     }
 }
 
-// Search for open tickets
+// Search for tickets
 async function ticketSearch(req, res) {
     try {
-        const { User, Password, State } = req.body;
+        const sessionKey = req.headers.sessionid || req.body.SessionID || req.query.SessionID;
 
-        validateCredentials(User, Password);
+        if (!sessionKey || !(await isValidSessionInDB(sessionKey))) {
+            throw new Error("Invalid or missing session key");
+        }
 
-        const tickets = fetchOpenTickets(User, Password).filter(ticket => ticket.State === (State || "new"));
-        res.json(tickets);
+        const { TicketNumber } = req.query;
+        const tickets = await searchTicketsInDB({ TicketNumber });
+
+        const ticketIDs = tickets.map(ticket => ticket.TicketID);
+        res.status(200).json({ TicketID: ticketIDs });
     } catch (error) {
         console.error("Error in ticketSearch:", error.message);
-        res.status(401).json({ error: "Failed to search tickets", details: error.message });
+        res.status(400).json({ error: "Ticket search failed", details: error.message });
     }
 }
 
-// Add detection context to a ticket
+// Add context to a ticket
 async function addDetectionContext(req, res) {
     try {
         const { User, Password, Context } = req.body;
+        const { ticketNumber } = req.params;
 
         validateCredentials(User, Password);
 
-        const ticketNumber = req.params.ticketNumber;
-        const contextArticle = {
-            Article: {
-                Subject: "Detection Context Update",
-                Body: JSON.stringify(Context, null, 2)
-            }
-        };
+        const updatedTicket = await addContextToTicket(ticketNumber, Context);
 
-        const article = addArticleToTicket(User, Password, ticketNumber, contextArticle);
-        res.status(201).json(article);
+        res.status(201).json({ Ticket: updatedTicket });
     } catch (error) {
         console.error("Error in addDetectionContext:", error.message);
-        res.status(401).json({ error: "Failed to add detection context", details: error.message });
+        res.status(400).json({ error: "Failed to add detection context", details: error.message });
     }
 }
 
-module.exports = { 
-    createSession, 
-    createTicket, 
-    addArticle, 
-    getTicket, 
+module.exports = {
+    createSession,
+    createTicket,
+    addArticle,
+    getTicket,
     ticketSearch,
     addDetectionContext
 };
