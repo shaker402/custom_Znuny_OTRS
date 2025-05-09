@@ -1,0 +1,124 @@
+/* ProcessTree_TicketDetails.css */
+
+/* Enforce full-width within the parent tab panel */
+.process-tree-container {
+    display: flex;
+    width: 100%;
+    height: 600px;                 /* Fixed height for predictable layout */
+    background-color: #ffffff;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif; /* Improved font for readability */
+    border-radius: 8px;            /* Rounded corners for a modern look */
+  }
+  
+  /* Tree graph pane */
+  .tree-graph {
+    flex: 2;                       /* Two-thirds width */
+    min-width: 0;                  /* Allow overflow */
+    padding: 16px;
+    background-color: #f3f4f6;     /* Light gray for better contrast */
+    border-right: 1px solid #d1d5db;
+    overflow: auto;
+    border-radius: 8px 0 0 8px;    /* Rounded left corners */
+    position: relative;
+  }
+  
+  /* Custom styles for slanted lines */
+  .link {
+    stroke: #6b7280;               /* Dark gray for better contrast */
+    stroke-width: 2px;             /* Thicker lines */
+    stroke-dasharray: 5, 5;        /* Dashed lines for a distinct appearance */
+    transform: skewX(-15deg);      /* Slanted effect */
+  }
+  
+  /* Sidebar pane */
+  .sidebar {
+    flex: 1;                       /* One-third width */
+    min-width: 300px;
+    max-width: 350px;
+    padding: 16px;
+    background-color: #ffffff;
+    overflow-y: auto;
+    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.05);
+    border-radius: 0 8px 8px 0;    /* Rounded right corners */
+  }
+  
+  /* Sidebar heading */
+  .sidebar h3 {
+    font-size: 1.25rem;            /* Slightly larger font size for better hierarchy */
+    font-weight: 700;              /* Bold heading for emphasis */
+    margin-bottom: 16px;
+    color: #1f2937;                /* Darker gray for better visibility */
+    border-bottom: 2px solid #d1d5db;
+    padding-bottom: 8px;
+  }
+  
+  /* Sidebar fields */
+  .sidebar p {
+    margin: 8px 0;
+    font-size: 0.9rem;             /* Slightly larger font for readability */
+    color: #374151;
+    line-height: 1.6;              /* Increased spacing for better readability */
+  }
+  .sidebar p strong {
+    display: inline-block;
+    min-width: 100px;
+    color: #111827;
+    font-weight: 600;              /* Slightly bolder for emphasis */
+  }
+  
+  /* Sidebar links */
+  .sidebar p a {
+    color: #2563eb;                /* Blue for links */
+    text-decoration: underline;
+    word-break: break-word;        /* Break long links */
+  }
+  
+  /* Node text styles */
+  .tree-graph text {
+    font-size: 18px;               /* Readable font size */
+    font-weight: 500;              /* Medium weight for better clarity */
+    fill: #1f2937;                 /* Darker text for better readability */
+  }
+  
+  /* Node circle styles */
+  .tree-graph circle {
+    fill: #3b82f6;                 /* Blue color for nodes */
+    stroke: #1e40af;               /* Darker blue stroke */
+    stroke-width: 2px;             /* Highlighted border */
+  }
+  
+  /* Responsive behavior */
+  @media (max-width: 768px) {
+    .process-tree-container {
+      flex-direction: column;
+      height: auto;
+    }
+    .tree-graph,
+    .sidebar {
+      flex: none;
+      width: 100%;
+      max-width: none;
+      border-right: none;
+      box-shadow: none;
+    }
+    .sidebar {
+      border-top: 1px solid #e5e7eb;
+    }
+  }
+  
+  /* Hover effect for nodes */
+  .tree-graph text:hover {
+    fill: #3b82f6;                 /* Blue text on hover */
+    cursor: pointer;
+  }
+  
+  .tree-graph circle:hover {
+    fill: #1e40af;                 /* Darker blue on hover */
+    cursor: pointer;
+  }
+  .rd3t-tree-container rd3t-grabbable {
+    transform: rotate(-45deg); /* Rotate the graph by -45 degrees */
+    transform-origin: top left; /* Set the rotation origin */
+}
+

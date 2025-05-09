@@ -1,0 +1,179 @@
+/* TicketDetails.css */
+
+/* Prevent page-level horizontal scrolling */
+body {
+    overflow-x: hidden;
+  }
+  
+  /* Root container */
+  .ticket-details {
+    padding: 24px;
+    background-color: #f3f4f6;
+    min-height: 100vh;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  /* Constrain and center each major block */
+  .ticket-details h1,
+  .ticket-details .meta,
+  .ticket-details .tabs,
+  .ticket-details .tab-content,
+  .ticket-details .tab-content > section {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  /* Back button */
+  .ticket-details .back-btn {
+    display: inline-block;
+    margin-bottom: 16px;
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .ticket-details .back-btn:hover {
+    text-decoration: underline;
+  }
+  
+  /* Title and metadata */
+  .ticket-details h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #111827;
+  }
+  .ticket-details .meta {
+    font-size: 0.875rem;
+    color: #4b5563;
+    margin-bottom: 24px;
+  }
+  .ticket-details .meta span {
+    font-weight: 500;
+  }
+  
+  /* Tabs navigation */
+  .ticket-details .tabs nav {
+    display: flex;
+    gap: 24px;
+    border-bottom: 1px solid #d1d5db;
+    margin-bottom: 24px;
+  }
+  .ticket-details .tabs button {
+    background: none;
+    border: none;
+    padding: 8px 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    position: relative;
+  }
+  .ticket-details .tabs button.active {
+    color: #2563eb;
+  }
+  .ticket-details .tabs button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #2563eb;
+  }
+  
+  /* Tab content container */
+  .ticket-details .tab-content {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* Each pane */
+  .ticket-details .tab-content > section {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 24px;
+    overflow-wrap: break-word;    /* wrap long text */
+    word-break: break-all;        /* break very long words/URLs */
+  }
+  
+  /* Section headers */
+  .ticket-details .tab-content h2 {
+    font-size: 1.125rem;
+    margin-bottom: 12px;
+    color: #111827;
+  }
+  
+  /* Paragraphs and lists */
+  .ticket-details .tab-content p,
+  .ticket-details .tab-content li {
+    font-size: 0.875rem;
+    color: #374151;
+    line-height: 1.5;
+  }
+  
+  /* Default <pre> (raw JSON): scroll only inside */
+  .ticket-details .tab-content pre.raw-pre {
+    background: #1f2937;
+    color: #d1fae5;
+    font-size: 0.75rem;
+    padding: 16px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre; /* preserve formatting */
+  }
+  
+  /* Wrapped <pre> for Alerts, Flows, etc.: wrap instead of scroll */
+  .ticket-details .tab-content pre.wrap-pre {
+    background: #1f2937;
+    color: #d1fae5;
+    font-size: 0.75rem;
+    padding: 16px;
+    border-radius: 4px;
+    white-space: pre-wrap;      /* allow wrapping */
+    word-wrap: break-word;      /* break long words */
+    overflow-x: hidden;         /* no horizontal scrollbar */
+  }
+  
+  /* Two-column grid for Summary */
+  .ticket-details .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 640px) {
+    .ticket-details .summary-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  /* Process Tree wrapper to force full width but allow inner wrapping if needed */
+  .ticket-details .process-tree-wrapper {
+    width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-all;
+  }
+  
+
+  /* 1) Remove any inherited max-width */
+.ticket-details .tabs {
+    max-width: none;
+    width: 100%;           /* or a fixed value like 1200px */
+  }
+  
+  /* 2) If you want the `<nav>` itself to be a fixed width: */
+  .ticket-details .tabs nav {
+    width: 1200px;         /* or whatever your design calls for */
+    margin: 0 auto;        /* center it in the page */
+  }
+  
+  /* 3) If the global app.css is really stubborn, bump specificity or use !important */
+  .ticket-details .tabs nav {
+    width: 1200px !important;
+  }
+  
