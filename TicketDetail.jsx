@@ -1,9 +1,10 @@
-// TicketDetails.jsx
 import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import GeneralContext from "../../Context";
 import ProcessTree from "./ProcessTree_TicketDetails";
+import AttackStory from "./Attack_Story";
+import AlertEvents from "./Alert_Events";
 import './TicketDetails.css';
 
 const tabs = [
@@ -47,6 +48,10 @@ const TicketDetails = () => {
 
   const processTreeArticle = ticket.Articles?.find(a =>
     a.Subject.toLowerCase().includes("process_tree")
+  )?.Body;
+
+  const alertEventsArticle = ticket.Articles?.find(a =>
+    a.Subject.toLowerCase().includes("alert & events")
   )?.Body;
 
   const fileFlow = ticket.Articles?.find(a =>
@@ -102,9 +107,10 @@ const TicketDetails = () => {
         {activeTab === "Alerts & Events" && (
           <section>
             <h2>Alerts & Events</h2>
-            <pre className="wrap-pre alert-pre">
-              {ticket.raw?.message || 'No alerts available.'}
-            </pre>
+            <AlertEvents
+              processTreeArticle={processTreeArticle}
+              alertEventsArticle={alertEventsArticle}
+            />
           </section>
         )}
 
@@ -167,10 +173,8 @@ const TicketDetails = () => {
         {/* Raw Data */}
         {activeTab === "Raw Data" && (
           <section>
-            <h2>Raw JSON</h2>
-            <pre className="raw-pre">
-              {JSON.stringify(ticket, null, 2)}
-            </pre>
+            <h2>Attack Story</h2>
+            <AttackStory rawData={ticket} />
           </section>
         )}
       </div>
