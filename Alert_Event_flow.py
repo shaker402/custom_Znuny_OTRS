@@ -3,7 +3,6 @@ from requests.auth import HTTPBasicAuth
 from datetime import datetime
 import sys
 import urllib3
-import json
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -16,6 +15,7 @@ PASSWORD = "changeme"
 SCROLL_TIME = "2m"
 note_title = "Context: Threat Intel (Alert & Events)"
 TEST = False
+MAX_NOTE_LENGTH = 65000  # 65KB limit for TEXT columns
 
 def ensure_ticket_prefix(ticket_number):
     """Ensure ticket number has MOCK- prefix."""
@@ -85,10 +85,20 @@ def format_timestamp(timestamp):
     except ValueError:
         return timestamp
 
-def generate_note_content(file_events):
-    """Generate HTML note content from file events."""
-    note_body = f"<h2>Found {len(file_events)} related event(s)</h2>"
+def generate_note_chunks(file_events):
+    """Generate HTML note chunks that respect database limits"""
+    chunks = []
+    current_chunk = []
+    current_length = 0
+    part_number = 1
     seen_kv_pairs = set()
+
+    # Initial header
+    header = f"<h2>Threat Intelligence Report (Part {part_number})</h2>"
+    current_chunk.append(header)
+    current_length += len(header)
+    current_chunk.append("<style>.event {{margin-bottom:20px; border:1px solid #ddd; padding:10px;}}</style>")
+    current_length += 65  # Approximate style tag length
 
     for event in file_events:
         src = event.get("_source", {})
@@ -99,150 +109,236 @@ def generate_note_content(file_events):
         kinds = [kinds] if isinstance(kinds, str) else kinds or []
         types = [types] if isinstance(types, str) else types or []
 
-        event_header = []
-        if kinds == ['signal']:
-            event_header.append("<h3 style='color: #ff0000;'>SIGNAL EVENT</h3>")
-        else:
+        # Deduplication logic
+        if kinds != ['signal']:
             key = (tuple(kinds), tuple(types))
             if key in seen_kv_pairs:
                 continue
             seen_kv_pairs.add(key)
-            event_header.append("<h3>STANDARD EVENT</h3>")
+
+        # Start building event HTML
+        event_html = ['<div class="event">']
+        if kinds == ['signal']:
+            event_html.append('<h3 style="color:red">🚨 SIGNAL EVENT</h3>')
+        else:
+            event_html.append('<h3>📄 STANDARD EVENT</h3>')
 
         # Basic info
-        note_body += "<div style='margin-bottom: 20px; border: 1px solid #ccc; padding: 10px;'>"
-        note_body += "".join(event_header)
-        note_body += f"<b>Timestamp:</b> {format_timestamp(src.get('@timestamp', 'N/A'))}<br>"
-        note_body += f"<b>Message:</b> {src.get('message', 'N/A')}<br>"
-        note_body += f"<b>Rule Name:</b> {src.get('kibana.alert.rule.name', 'N/A')}<br>"
+        event_html.append(f"<b>Timestamp:</b> {format_timestamp(src.get('@timestamp', 'N/A'))}<br>")
+        event_html.append(f"<b>Message:</b> {src.get('message', 'N/A')}<br>")
+        event_html.append(f"<b>Rule Name:</b> {src.get('kibana.alert.rule.name', 'N/A')}<br>")
 
-        # Process information
+        # Process details
         process = src.get("process", {})
         if process:
-            note_body += "<h4>Process Details</h4>"
-            note_body += f"<b>Name:</b> {process.get('name', 'N/A')}<br>"
-            note_body += f"<b>PID:</b> {process.get('pid', 'N/A')}<br>"
-            note_body += f"<b>Entity ID:</b> {process.get('entity_id', 'N/A')}<br>"
-            note_body += f"<b>Command Line:</b> {process.get('command_line', 'N/A')}<br>"
-            note_body += f"<b>Args:</b> {process.get('args', 'N/A')}<br>"
-            note_body += f"<b>Args Count:</b> {process.get('args_count', 'N/A')}<br>"
-            note_body += f"<b>Working Directory:</b> {process.get('working_directory', 'N/A')}<br>"
-            note_body += f"<b>Executable:</b> {process.get('executable', 'N/A')}<br>"
-            
+            event_html.append("<h4>🔧 Process Details</h4>")
+            proc_fields = [
+                ("Name", "name"),
+                ("PID", "pid"),
+                ("Entity ID", "entity_id"),
+                ("Command Line", "command_line"),
+                ("Args", "args"),
+                ("Args Count", "args_count"),
+                ("Working Directory", "working_directory"),
+                ("Executable", "executable")
+            ]
+            for label, key in proc_fields:
+                event_html.append(f"<b>{label}:</b> {process.get(key, 'N/A')}<br>")
+
+            # User context
+            user = process.get("user", {})
+            if user:
+                event_html.append("<h4>👤 User Context</h4>")
+                user_fields = [
+                    ("Identifier", "identifier"),
+                    ("Domain", "domain"),
+                    ("Name", "name"),
+                    ("Type", "type")
+                ]
+                for label, key in user_fields:
+                    event_html.append(f"<b>{label}:</b> {user.get(key, 'N/A')}<br>")
+
             # Parent process
             parent = process.get("parent", {})
             if parent:
-                note_body += "<h4>Parent Process</h4>"
-                note_body += f"<b>Name:</b> {parent.get('name', 'N/A')}<br>"
-                note_body += f"<b>PID:</b> {parent.get('pid', 'N/A')}<br>"
-                note_body += f"<b>Entity ID:</b> {parent.get('entity_id', 'N/A')}<br>"
-                note_body += f"<b>Args:</b> {parent.get('args', 'N/A')}<br>"
-                note_body += f"<b>Args Count:</b> {parent.get('args_count', 'N/A')}<br>"
-                note_body += f"<b>Executable:</b> {parent.get('executable', 'N/A')}<br>"
-                note_body += f"<b>Command Line:</b> {parent.get('command_line', 'N/A')}<br>"
+                event_html.append("<h4>↗️ Parent Process</h4>")
+                parent_fields = [
+                    ("Name", "name"),
+                    ("PID", "pid"),
+                    ("Entity ID", "entity_id"),
+                    ("Args", "args"),
+                    ("Args Count", "args_count"),
+                    ("Executable", "executable"),
+                    ("Command Line", "command_line")
+                ]
+                for label, key in parent_fields:
+                    event_html.append(f"<b>{label}:</b> {parent.get(key, 'N/A')}<br>")
 
             # PE information
             pe = process.get("pe", {})
             if pe:
-                note_body += "<h4>PE Information</h4>"
-                note_body += f"<b>File Version:</b> {pe.get('file_version', 'N/A')}<br>"
-                note_body += f"<b>Company:</b> {pe.get('company', 'N/A')}<br>"
-                note_body += f"<b>Product:</b> {pe.get('product', 'N/A')}<br>"
-                note_body += f"<b>Description:</b> {pe.get('description', 'N/A')}<br>"
+                event_html.append("<h4>📁 PE Information</h4>")
+                pe_fields = [
+                    ("File Version", "file_version"),
+                    ("Company", "company"),
+                    ("Product", "product"),
+                    ("Description", "description")
+                ]
+                for label, key in pe_fields:
+                    event_html.append(f"<b>{label}:</b> {pe.get(key, 'N/A')}<br>")
 
             # Hashes
             hashes = process.get("hash", {})
             if hashes:
-                note_body += "<h4>Hashes</h4>"
-                note_body += f"<b>SHA256:</b> {hashes.get('sha256', 'N/A')}<br>"
-                note_body += f"<b>MD5:</b> {hashes.get('md5', 'N/A')}<br>"
+                event_html.append("<h4>🔐 Hashes</h4>")
+                hash_fields = [
+                    ("SHA256", "sha256"),
+                    ("MD5", "md5")
+                ]
+                for label, key in hash_fields:
+                    event_html.append(f"<b>{label}:</b> {hashes.get(key, 'N/A')}<br>")
 
         # Fields information
         fields = src.get("fields", {})
         if fields:
-            note_body += "<h4>Field Metadata</h4>"
-            note_body += f"<b>Event Category:</b> {fields.get('event.category', 'N/A')}<br>"
-            note_body += f"<b>Process Name:</b> {fields.get('process.name.text', 'N/A')}<br>"
-            note_body += f"<b>Host OS:</b> {fields.get('host.os.name.text', 'N/A')}<br>"
+            event_html.append("<h4>📊 Field Metadata</h4>")
+            field_data = [
+                ("Event Category", "event.category"),
+                ("Process Name", "process.name.text"),
+                ("Host OS", "host.os.name.text")
+            ]
+            for label, key in field_data:
+                event_html.append(f"<b>{label}:</b> {fields.get(key, 'N/A')}<br>")
 
-        # Threat information
+        # Threat intelligence
         threats = src.get("kibana.alert.rule.threat", [])
         if threats:
-            note_body += "<h4>Threat Intelligence</h4>"
+            event_html.append("<h4>⚠️ Threat Intelligence</h4>")
             for threat in threats:
-                note_body += f"<b>Framework:</b> {threat.get('framework', 'N/A')}<br>"
+                event_html.append(f"<b>Framework:</b> {threat.get('framework', 'N/A')}<br>")
                 tactic = threat.get("tactic", {})
-                note_body += f"<b>Tactic:</b> {tactic.get('name', 'N/A')} ({tactic.get('id', 'N/A')})<br>"
+                if tactic:
+                    event_html.append("<div style='margin-left:15px;'>")
+                    event_html.append("<h5>Tactic</h5>")
+                    event_html.append(f"<b>Name:</b> {tactic.get('name', 'N/A')}<br>")
+                    event_html.append(f"<b>ID:</b> {tactic.get('id', 'N/A')}<br>")
+                    event_html.append(f"<b>Reference:</b> {tactic.get('reference', 'N/A')}<br>")
+                    event_html.append("</div>")
                 
                 techniques = threat.get("technique", [])
                 for tech in techniques:
-                    note_body += f"<b>Technique:</b> {tech.get('name', 'N/A')} ({tech.get('id', 'N/A')})<br>"
+                    event_html.append("<div style='margin-left:15px;'>")
+                    event_html.append("<h5>Technique</h5>")
+                    event_html.append(f"<b>Name:</b> {tech.get('name', 'N/A')}<br>")
+                    event_html.append(f"<b>ID:</b> {tech.get('id', 'N/A')}<br>")
+                    event_html.append(f"<b>Reference:</b> {tech.get('reference', 'N/A')}<br>")
+                    
                     subtechs = tech.get("subtechnique", [])
                     for subtech in subtechs:
-                        note_body += f"&nbsp;&nbsp;<b>Subtechnique:</b> {subtech.get('name', 'N/A')} ({subtech.get('id', 'N/A')})<br>"
+                        event_html.append("<div style='margin-left:30px;'>")
+                        event_html.append("<h6>Subtechnique</h6>")
+                        event_html.append(f"<b>Name:</b> {subtech.get('name', 'N/A')}<br>")
+                        event_html.append(f"<b>ID:</b> {subtech.get('id', 'N/A')}<br>")
+                        event_html.append(f"<b>Reference:</b> {subtech.get('reference', 'N/A')}<br>")
+                        event_html.append("</div>")
+                    event_html.append("</div>")
 
         # Event categories
         event_data = src.get("event", {})
         if event_data:
-            note_body += "<h4>Event Metadata</h4>"
-            note_body += f"<b>Agent ID Status:</b> {event_data.get('agent_id_status', 'N/A')}<br>"
-            note_body += f"<b>Ingested:</b> {event_data.get('ingested', 'N/A')}<br>"
-            note_body += f"<b>Code:</b> {event_data.get('code', 'N/A')}<br>"
-            note_body += f"<b>Provider:</b> {event_data.get('provider', 'N/A')}<br>"
-            note_body += f"<b>Created:</b> {event_data.get('created', 'N/A')}<br>"
-            note_body += f"<b>Module:</b> {event_data.get('module', 'N/A')}<br>"
-            note_body += f"<b>Action:</b> {event_data.get('action', 'N/A')}<br>"
-            note_body += f"<b>Dataset:</b> {event_data.get('dataset', 'N/A')}<br>"
+            event_html.append("<h4>📅 Event Metadata</h4>")
+            meta_fields = [
+                ("Agent ID Status", "agent_id_status"),
+                ("Ingested", "ingested"),
+                ("Code", "code"),
+                ("Provider", "provider"),
+                ("Created", "created"),
+                ("Module", "module"),
+                ("Action", "action"),
+                ("Dataset", "dataset")
+            ]
+            for label, key in meta_fields:
+                event_html.append(f"<b>{label}:</b> {event_data.get(key, 'N/A')}<br>")
             
             for category in event_data.get("category", []):
-                note_body += f"<h5>{category.capitalize()} Details</h5>"
+                event_html.append(f"<h5>{category.capitalize()} Details</h5>")
                 
                 if category == "file":
                     file_info = src.get("file", {})
-                    note_body += f"<b>Path:</b> {file_info.get('path', 'N/A')}<br>"
-                    note_body += f"<b>Name:</b> {file_info.get('name', 'N/A')}<br>"
-                    note_body += f"<b>Extension:</b> {file_info.get('extension', 'N/A')}<br>"
-                    note_body += f"<b>Directory:</b> {file_info.get('directory', 'N/A')}<br>"
+                    file_fields = [
+                        ("Path", "path"),
+                        ("Name", "name"),
+                        ("Extension", "extension"),
+                        ("Directory", "directory")
+                    ]
+                    for label, key in file_fields:
+                        event_html.append(f"<b>{label}:</b> {file_info.get(key, 'N/A')}<br>")
                 
                 elif category == "registry":
                     registry = src.get("registry", {})
-                    note_body += f"<b>Hive:</b> {registry.get('hive', 'N/A')}<br>"
-                    note_body += f"<b>Key:</b> {registry.get('key', 'N/A')}<br>"
-                    note_body += f"<b>Value:</b> {registry.get('value', 'N/A')}<br>"
+                    registry_fields = [
+                        ("Hive", "hive"),
+                        ("Key", "key"),
+                        ("Value", "value")
+                    ]
+                    for label, key in registry_fields:
+                        event_html.append(f"<b>{label}:</b> {registry.get(key, 'N/A')}<br>")
+                    
                     registry_data = registry.get("data", {})
                     if registry_data:
-                        note_body += f"<b>Data Type:</b> {registry_data.get('type', 'N/A')}<br>"
-                        note_body += f"<b>Data Strings:</b> {registry_data.get('strings', 'N/A')}<br>"
+                        event_html.append(f"<b>Data Type:</b> {registry_data.get('type', 'N/A')}<br>")
+                        event_html.append(f"<b>Data Strings:</b> {registry_data.get('strings', 'N/A')}<br>")
                 
                 elif category == "configuration":
                     config = src.get("configuration", {})
-                    note_body += f"<b>Hive:</b> {config.get('hive', 'N/A')}<br>"
-                    note_body += f"<b>Key:</b> {config.get('key', 'N/A')}<br>"
-                    note_body += f"<b>Value:</b> {config.get('value', 'N/A')}<br>"
+                    config_fields = [
+                        ("Hive", "hive"),
+                        ("Key", "key"),
+                        ("Value", "value")
+                    ]
+                    for label, key in config_fields:
+                        event_html.append(f"<b>{label}:</b> {config.get(key, 'N/A')}<br>")
+                    
                     config_data = config.get("data", {})
                     if config_data:
-                        note_body += f"<b>Data Type:</b> {config_data.get('type', 'N/A')}<br>"
-                        note_body += f"<b>Data Strings:</b> {config_data.get('strings', 'N/A')}<br>"
+                        event_html.append(f"<b>Data Type:</b> {config_data.get('type', 'N/A')}<br>")
+                        event_html.append(f"<b>Data Strings:</b> {config_data.get('strings', 'N/A')}<br>")
                 
                 elif category == "process":
                     proc_info = src.get("process", {})
-                    note_body += f"<b>Working Directory:</b> {proc_info.get('working_directory', 'N/A')}<br>"
-                    note_body += f"<b>Executable:</b> {proc_info.get('executable', 'N/A')}<br>"
+                    event_html.append(f"<b>Working Directory:</b> {proc_info.get('working_directory', 'N/A')}<br>")
+                    event_html.append(f"<b>Executable:</b> {proc_info.get('executable', 'N/A')}<br>")
                 
                 else:
-                    note_body += f"<div style='color: #666;'>Details for category '{category}' are not recognized or available.</div><br>"
+                    event_html.append(f"<div style='color:#666'>Details for category '{category}' not available</div>")
 
-        note_body += "</div><hr>"
+        event_html.append("</div>")  # Close event div
+        event_content = "".join(event_html)
+        
+        # Check length and split if needed
+        if current_length + len(event_content) > MAX_NOTE_LENGTH:
+            # Finalize current chunk
+            chunks.append("".join(current_chunk))
+            # Start new chunk
+            part_number += 1
+            current_chunk = [
+                f"<h2>Threat Intelligence Report (Part {part_number})</h2>",
+                "<style>.event {margin-bottom:20px; border:1px solid #ddd; padding:10px;}</style>"
+            ]
+            current_length = sum(len(s) for s in current_chunk)
+        
+        current_chunk.append(event_content)
+        current_length += len(event_content)
 
-    # Add JSON dump reference
-    note_body += "<h4>Raw Data</h4>"
-    note_body += "<i>Complete JSON data attached to ticket system</i>"
-
-    return note_body
+    # Add final chunk
+    if current_chunk:
+        chunks.append("".join(current_chunk))
+    
+    return chunks
 
 def main():
     if len(sys.argv) != 4:
-        print("Usage: python file_flow.py <ticket_number> <device_name> <process_entity_id>")
+        print("Usage: python Alert_Event_flow.py <ticket_number> <device_name> <process_entity_id>")
         sys.exit(1)
 
     ticket_number = ensure_ticket_prefix(sys.argv[1])
@@ -255,22 +351,22 @@ def main():
             print("No events found")
             return
 
-        note_content = generate_note_content(events)
+        # Generate and send note chunks
+        note_chunks = generate_note_chunks(events)
+        for idx, chunk in enumerate(note_chunks):
+            zs_add_note_to_ticket(
+                ticket_number,
+                "raw",
+                TEST,
+                f"{note_title} [Part {idx+1}]",
+                chunk,
+                "text/html"
+            )
 
-        zs_add_note_to_ticket(
-            ticket_number,    # positional
-            "raw",            # positional
-            TEST,             # positional
-            note_title,       # positional
-            note_content,     # positional
-            "text/html"       # positional
-        )
-
-        print(f"Successfully added note to ticket {ticket_number}")
-        print(f"Raw data saved to output_{ticket_number}.json")
+        print(f"✅ Added {len(note_chunks)} notes to ticket {ticket_number}")
 
     except Exception as e:
-        print(f"Error processing ticket: {str(e)}")
+        print(f"❌ Error processing ticket: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
